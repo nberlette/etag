@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "deno.ns",
+      "deno.window",
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "types": [
+      "./mod.d.ts"
+    ]
+  },
+  "tasks": {
+    "prepare": "deno fmt; deno lint --unstable; deno test --no-check",
+    "publish": "deno task prepare; deno run -A https://deno.land/x/publish/cli.ts"
+  },
+  "lint": {
+    "files": {
+      "exclude": [
+        ".{devcontainer,vscode,github}"
+      ]
+    },
+    "rules": {
+      "exclude": [
+        "no-explicit-any",
+        "ban-types"
+      ]
+    }
+  },
+  "fmt": {
+    "files": {
+      "exclude": [
+        ".{devcontainer,vscode,github}"
+      ]
+    }
+  },
+  "test": {
+    "files": {
+      "exclude": [
+        "deps_test.ts"
+      ]
+    }
+  }
+}
