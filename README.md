@@ -96,15 +96,22 @@ etag(svg, false);
 
 ### Server Middleware
 
-The `factory` function exported in `mod.ts` is a quick and easy way to add ETag support to a project running on the Oak server framework. It probably supports other frameworks as well, but I haven't had the chance to investigate that yet.
+The `factory` function exported in `mod.ts` is a quick and easy way to add ETag
+support to a project running on the Oak server framework. It probably supports
+other frameworks as well, but I haven't had the chance to investigate that yet.
 
 ```ts
-app.use('/:img.png', etag.factory)
+app.use("/:img.png", etag.factory);
 ```
 
-How's it work? The factory function returns a closure which receives the application context object, giving it the ability to intercept and modify headers on every request/response.  
+How's it work? The factory function returns a closure which receives the
+application context object, giving it the ability to intercept and modify
+headers on every request/response.
 
-Register the factory as a middleware with your framework, define a specific URL pattern for it to be triggered on, and a deterministic ETag will be generated and injected into the response headers for all requests that match its registered pattern.
+Register the factory as a middleware with your framework, define a specific URL
+pattern for it to be triggered on, and a deterministic ETag will be generated
+and injected into the response headers for all requests that match its
+registered pattern.
 
 ---
 

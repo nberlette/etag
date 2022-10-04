@@ -16,3 +16,5 @@ docs
 .old
 .backups
 .stashed
+.nodetag
+_util.ts
