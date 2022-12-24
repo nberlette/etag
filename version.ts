@@ -5,8 +5,7 @@
 /// <reference lib="deno.window" />
 /// <reference lib="esnext" />
 
-import type { ExpandGlobOptions } from "https://deno.land/std@0.167.0/fs/mod.ts";
-import { $, assert, colors, is, JSONC, semver, TOML, YAML } from "./deps.ts";
+import { $, assert, colors, is, JSONC, semver, TOML, YAML, type ExpandGlobOptions } from "./deps.ts";
 
 const ansi = colors();
 const DEBUG = !["false", null, undefined].includes(Deno.env.get("DEBUG"));
@@ -39,7 +38,7 @@ export async function prepublish(version: string) {
     }>("./egg.*");
 
     // sanity check
-    if (!is.nullish(egg?.path) && egg?.parsed) {
+    if (egg?.parsed) {
       if (is.nonEmptyStringAndNotWhitespace(NESTAPIKEY)) {
         // ensure eggs is installed (implicit latest version)
         exec(Deno.execPath(), "install -A https://deno.land/x/eggs/cli.ts");

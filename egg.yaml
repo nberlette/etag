@@ -6,8 +6,8 @@ homepage: "https://github.com/deno911/etag"
 repository: "https://github.com/deno911/etag"
 unstable: false
 unlisted: false
-version: 0.0.1
-releaseType: patch
+version: 0.1.0
+releaseType: false
 files:
   - "./*.{json,jsonc,md,ts,d.ts}"
   - "./{deno.*,egg.*,LICENSE,README.md}"

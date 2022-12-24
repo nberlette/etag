@@ -6,6 +6,8 @@ export {
 
 export * from "https://deno.land/std@0.170.0/node/buffer.ts";
 
+export type { ExpandGlobOptions } from "https://deno.land/std@0.170.0/fs/mod.ts";
+
 // for version.ts
 export * as semver from "https://deno.land/std@0.170.0/semver/mod.ts";
 export * as JSONC from "https://deno.land/std@0.170.0/encoding/jsonc.ts";
