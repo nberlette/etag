@@ -4,24 +4,56 @@
 /// <reference lib="deno.window" />
 /// <reference lib="dom" />
 
-/*!
- * etag
+/**
+ * ## 🏷️ etag
+ *
  * Deno-friendly utilities for encoding, decoding, and handling ETags in
  * HTTP requests and responses. Plays well with server frameworks like Oak.
  *
+ * ### Usage
+ *
+ * ```ts
+ * import etag from "https://deno.land/x/etag@0.0.1/mod.ts";
+ *
+ * etag(`<svg xmlns="http://www.w3.org/2000/svg"><!-- ... --></svg>`);
+ *
+ * etag.encode(
+ *    entity: string | FileInfo | ArrayBuffer | Uint8Array | BodyInit,
+ *    options?: boolean | { weak?: boolean }
+ * ): string;
+ * ```
+ *
+ * For more examples and documentation, refer to the module homepage at
+ * [**deno.land/x/etag**](https://deno.land/x/etag/mod.ts?doc).
+ *
  * ### Prior Art
- * Inspired by the Oak framework's etag.ts module, as well as jshttp/etag (npm)
  *
- * @copyright 2022+ Nicholas Berlette and the Deno911 Project
+ * Inspired by both the Oak framework's etag.ts module, and the OG jshttp/etag
+ * package of the Node ecosystem.
+ *
+ * @see {@link https://github.com/deno911/etag GitHub Repository}
+ * @see {@link https://deno.land/x/oak/etag.ts?source oak/etag.ts}
+ * @see {@link https://npmjs.org/package/etag jshttp/etag}
+ *
+ * @author Nicholas Berlette <https://github.com/nberlette>
+ * @module etag
+ * @version 0.0.1
  * @license MIT
- *
- * @see {@link https://github.com/deno911/etag}
- * @see {@link https://deno.land/x/oak/etag.ts?source}
- * @see {@link https://npmjs.org/package/etag}
- * @module
  */
 
-import { digestSync, getEntity, is, isFileInfo } from "./helpers.ts";
+import {
+  assert,
+  decodeEntityTag,
+  decodeStatTag,
+  digestSync,
+  ETAG_EMPTY,
+  ETAG_LENGTH,
+  ETAG_MTIME_LENGTH,
+  ETAG_RADIX,
+  getEntity,
+  is,
+  isFileInfo,
+} from "./_util.ts";
 
 import type {
   Context,
@@ -30,27 +62,13 @@ import type {
   Entity,
   ETagOptions,
   FileInfo,
+  Id,
   Middleware,
   Options,
   State,
 } from "./mod.d.ts";
 
-export type {
-  Context,
-  DecodedEntityTag,
-  DecodedStatTag,
-  Entity,
-  ETagOptions,
-  FileInfo,
-  Middleware,
-  Options,
-  State,
-};
-
-const ETAG_EMPTY = `"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk="`;
-const ETAG_LENGTH = 27;
-const ETAG_RADIX = 16;
-const ETAG_MTIME_LENGTH = 12; // Date.now().toString(16).length + 1;
+export type { DecodedEntityTag, DecodedStatTag, ETagOptions, Options };
 
 /**
  * Calculate an ETag value for an entity. If the entity is `FileInfo`, then the
@@ -59,7 +77,8 @@ const ETAG_MTIME_LENGTH = 12; // Date.now().toString(16).length + 1;
  *
  * @param entity A string, Uint8Array, or file info to use to generate the ETag
  * @param options either a boolean - a shorthand way to set `options.weak` - or an object of type `{ weak?: boolean; statTag?: boolean; }`
- * @example ```ts
+ * @example
+ * ```ts
  * import * as etag from "https://deno.land/x/etag@0.0.1/mod.ts";
  * import $ from "https://deno.land/x/dax/mod.ts";
  *
@@ -79,42 +98,59 @@ export function encode(entity: Entity, options: Options = {}): string {
 
   const utf8 = new TextEncoder();
   function calcStatTag(entity: FileInfo): string {
-    const mtime = new Date(entity.mtime ?? Date.now())?.getTime().toString(16);
+    const mtime = new Date(entity.mtime || Date.now()).getTime().toString(16);
+
     const size = entity.size?.toString(16);
+
     return `"${size}-${mtime}"`;
   }
 
   function calcEntityTag(entity: Entity) {
+    let length: string | number = 0;
     if (is.uint8Array(entity) && entity.length === 0) {
       return ETAG_EMPTY;
     } else if (is.string(entity)) {
+      length = entity.length;
       entity = utf8.encode(entity);
     } else if (is.arrayBuffer(entity)) {
+      length = entity.byteLength;
       entity = new Uint8Array(entity);
+      assert.uint8Array(entity);
+      length = entity.length;
     }
 
-    const length = (entity as Uint8Array)?.length?.toString?.(ETAG_RADIX) ?? 0;
+    length &&= length.toString(ETAG_RADIX) ?? 0;
     const hash = digestSync(entity).slice(0, ETAG_LENGTH);
 
     return `"${length}-${hash}"`;
   }
 
   // and now we actually calculate the ETag...
-  const hasFileInfo = isFileInfo(entity);
-  const weak = opt.weak ?? hasFileInfo;
-  const tag = (hasFileInfo || (hasFileInfo && opt.statTag))
-    ? calcStatTag(entity as FileInfo)
-    : calcEntityTag(entity as Uint8Array);
+  const hasFileInfo = isFileInfo(entity) || (isFileInfo(entity) && opt.statTag);
+  const cmd = hasFileInfo ? calcStatTag : calcEntityTag;
+  const tag = cmd(entity as any);
 
-  return weak ? `W/${tag}` : tag;
+  const prefix = (opt.weak || hasFileInfo) ? "W/" : "";
+  return `${prefix}${tag}`;
 }
 /**
- * Decode an etag into the relevant file info.
+ * Attempt to decode an etag into the relevant file info. This is experimental,
+ * and by design is only compatible with ETags that were either 1) generated
+ * using this module, or 2) generated with a similar library that uses the same
+ * API to generate its tags.
+ *
  * @param etag The ETag to decode
- * @example ```ts
+ * @returns an object of type DecodedStatTag or DecodedEntityTag, depending on
+ * which format was used to create the tag, or `undefined` if the decoding
+ * process was unsuccessful.
+ * @see {@linkcode encode} to understand the algorithm used to generate the
+ * tags that this method attempts to decode.
+ *
+ * @example
+ * ```ts
  * // continuing the example from etag.encode
  *
- * import * as etag from "https://deno.land/x/etag@0.0.1/mod.ts";
+ * import * as etag from "https://deno.land/x/etag/mod.ts";
  * import $ from "https://deno.land/x/dax/mod.ts";
  *
  * for await (const f of $.fs.expandGlob("./src/*.ts")) {
@@ -132,32 +168,20 @@ export function encode(entity: Entity, options: Options = {}): string {
  */
 export function decode(
   etag: string,
-): Partial<DecodedStatTag> | Partial<DecodedEntityTag> {
-  function decodeStatTag(value: string): Partial<DecodedStatTag> {
-    const [size, time] = value.split("-").map((n: string | number) => (
-      n = parseInt(n as string, ETAG_RADIX) as number, is.nan(n) ? 0 : n
-    ));
-    const mtime = new Date(time);
-    return { size, mtime, hash: null };
+): Partial<DecodedStatTag | DecodedEntityTag> | undefined {
+  try {
+    etag = etag.trim();
+    const weak = /^W\//.test(etag);
+    const value = etag.replace(/^(?:W\/)?"(.*)"$/, "$1").trim();
+
+    const isStatTag = value.split("-")[1].length <= ETAG_MTIME_LENGTH;
+
+    const decoded = (isStatTag ? decodeStatTag : decodeEntityTag)(value);
+    return { weak, etag, ...decoded };
+  } catch (err) {
+    console.error(err);
+    return undefined;
   }
-
-  function decodeEntityTag(value: string): Partial<DecodedEntityTag> {
-    const [length, hash] = value.split("-");
-    let size = parseInt(length, ETAG_RADIX);
-    size = is.nan(size) ? 0 : size;
-    return { size, hash, mtime: null };
-  }
-
-  etag = etag.trim();
-  const weak = /^W\//.test(etag);
-  const value = etag.replace(/^(?:W\/)?"(.*)"$/, "$1").trim();
-  const isStatTag = value.split("-")[1].length <= ETAG_MTIME_LENGTH;
-
-  return {
-    weak,
-    etag,
-    ...(isStatTag ? decodeStatTag(value) : decodeEntityTag(value)),
-  };
 }
 
 /**
@@ -226,9 +250,11 @@ export function ifNoneMatch(
   if (value.trim() === "*") {
     return false;
   }
-  const opt = is.boolean(options)
-    ? { weak: Boolean(options), statTag: false }
-    : { weak: false, statTag: false, ...(options ?? {}) };
+  const opt = { weak: is.boolean(options) ? !!options : false, statTag: false };
+
+  if (is.plainObject(options)) {
+    Object.assign(opt, options ?? {});
+  }
 
   const etag = encode(entity, opt);
   const tags = value.split(/\s*,\s*/);
@@ -237,17 +263,25 @@ export function ifNoneMatch(
 
 export { ifNoneMatch as ifNoMatch };
 
-const _default = encode;
+const etag = {
+  encode,
+  decode,
+  ifMatch,
+  ifNoneMatch,
+  factory,
+} as const;
 
-interface ETag extends ETagMethods {
+interface ETag extends Id<typeof etag> {
   /**
-   * Calculate an ETag value for an entity. If the entity is `FileInfo`, then the
-   * tag will default to a _weak_ ETag.  `options.weak` overrides any default
-   * behavior in generating the tag.
+   * Calculate an ETag value for an entity. If the entity is `FileInfo`, then
+   * the tag will default to a _weak_ ETag.  `options.weak` overrides any
+   * default behavior in generating the tag.
    *
-   * @param entity A string, Uint8Array, or file info to use to generate the ETag
-   * @param options either a boolean - a shorthand way to set `options.weak` - or an object of type `{ weak?: boolean; statTag?: boolean; }`
-   * @example ```ts
+   * @param entity A string, Uint8Array, or FileInfo used to generate the ETag
+   * @param options either a boolean (shorthand for `options.weak`), or object
+   * of shape `{ weak?: boolean; statTag?: boolean; }`
+   * @example
+   * ```ts
    * import * as etag from "https://deno.land/x/etag@0.0.1/mod.ts";
    * import $ from "https://deno.land/x/dax/mod.ts";
    *
@@ -262,56 +296,29 @@ interface ETag extends ETagMethods {
    */
   (entity: Entity, options?: Options): string;
 }
-interface ETagMethods {
-  /**
-   * Calculate an ETag value for an entity. If the entity is `FileInfo`, then the
-   * tag will default to a _weak_ ETag.  `options.weak` overrides any default
-   * behavior in generating the tag.
-   *
-   * @param entity A string, Uint8Array, or file info to use to generate the ETag
-   * @param options either a boolean - a shorthand way to set `options.weak` - or an object of type `{ weak?: boolean; statTag?: boolean; }`
-   */
-  encode(entity: Entity, options?: Options): string;
 
-  /**
-   * Decode an etag into the relevant file info.
-   * @param etag The ETag to decode
-   */
-  decode(etag: string): Partial<DecodedStatTag> | Partial<DecodedEntityTag>;
+const { assign, defineProperties: define } = Object;
 
-  /**
-   * Create middleware that will attempt to decode the response.body into
-   * something that can be used to generate an `ETag` and add the `ETag` header to
-   * the response.
-   */
-  factory<S extends State>(options?: Options): Middleware<S>;
+/**
+ * The default export is a simple clone of the exported `encode` function, with
+ * all of all of the named exports defined as properties underneath it.
+ *
+ * This allows for the following usage when importing via the default export:
+ *
+ * @example
+ * ```ts
+ * import etag from "https://deno.land/x/etag@0.0.1/mod.ts";
+ *
+ * etag("hello deno911");
+ * // 👆🏻 and 👇🏼 are identical
+ * etag.encode("hello deno911");
+ * ```
+ */
+const etagEncode = ((...a) => encode(...a)) as typeof encode;
 
-  /**
-   * A helper function that takes the value from the `If-Match` header and an
-   * entity and returns `true` if the `ETag` for the entity matches the supplied
-   * value, otherwise `false`.
-   *
-   * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-Match
-   */
-  ifMatch(value: string, entity: Entity, options?: Options): boolean;
+define(etagEncode, {
+  [Symbol.toStringTag]: { value: "ETag", configurable: true },
+  name: { value: "ETag" },
+});
 
-  /**
-   * A helper function that takes the value from the `If-No-Match` header and
-   * an entity and returns `false` if the `ETag` for the entity matches the
-   * supplied value, otherwise `false`.
-   *
-   * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-None-Match
-   */
-  ifNoneMatch(value: string, entity: Entity, options?: Options): boolean;
-
-  readonly [Symbol.toStringTag]: string;
-}
-
-export default Object.assign<typeof _default, ETagMethods>(_default, {
-  encode,
-  decode,
-  factory,
-  ifMatch,
-  ifNoneMatch,
-  [Symbol.toStringTag]: "ETag",
-}) as ETag;
+export default assign(etagEncode, etag) as ETag;
