@@ -3,7 +3,7 @@
 # [![deno911/etag - deno utilities for handling etags](https://migo.deno.dev/img.png?titleFontFamily=Inter&titleFontSize=96&titleFontWeight=900&&titleTextAnchor=left&titleX=80&titleY=183&subtitleFontSize=48&subtitleFontWeight=900&subtitleFontFamily=monospace&subtitleTextAnchor=left&subtitleX=450&subtitleY=178&width=1000&height=300&bgColor=123456&titleColor=4ac&subtitleColor=fff&iconW=150&iconH=150&iconX=285&iconY=70&borderRadius=20&icon=openmoji:t-rex&pxRatio=1.5&title=etag&subtitle=deno.land%2Fx%2Fetag)](https://deno.land/x/etag)
 
 ```ts
-import etag from "https://deno.land/x/etag@0.0.1/mod.ts";
+import etag from "https://deno.land/x/etag@0.0.2/mod.ts";
 ```
 
 [**`encode`**](#encode)  ·  [**`decode`**](#decode)  · 
@@ -24,7 +24,7 @@ are defined as properties of the default export. Meaning it can be used as a
 function and also an object:
 
 ```ts
-import etag from "https://deno.land/x/etag@0.0.1/mod.ts";
+import etag from "https://deno.land/x/etag@0.0.2/mod.ts";
 
 etag(entity, options); // encode a tag for entity
 
