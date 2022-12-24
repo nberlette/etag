@@ -18,3 +18,5 @@ docs
 .stashed
 .nodetag
 _util.ts
+deno.lock
+*.lock

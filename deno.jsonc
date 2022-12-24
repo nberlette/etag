@@ -15,6 +15,7 @@
     "prepare": "deno fmt; deno lint --unstable; deno test --no-check",
     "publish": "deno task prepare; deno run -A https://deno.land/x/publish/cli.ts"
   },
+  "lock": false,
   "lint": {
     "files": {
       "exclude": [
