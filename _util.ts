@@ -204,7 +204,3 @@ export async function getEntity(ctx: any): Promise<any> {
   }
 }
 
-/**
- * noop!
- */
-export const noop = () => {};
