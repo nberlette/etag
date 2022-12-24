@@ -33,15 +33,37 @@ export async function prepublish(version: string) {
   try {
     // and link our nest api key from the environment
     const NESTAPIKEY = Deno.env.get("NESTAPIKEY");
-    const eggConfig = find("./egg.*");
+    const egg = find<{
+      version: string;
+      [x: string]: JSONC.JSONValue;
+    }>("./egg.*");
 
     // sanity check
-    if (!is.nullOrUndefined(eggConfig)) {
+    if (!is.nullish(egg?.path) && egg?.parsed) {
       if (is.nonEmptyStringAndNotWhitespace(NESTAPIKEY)) {
         // ensure eggs is installed (implicit latest version)
         exec(Deno.execPath(), "install -A https://deno.land/x/eggs/cli.ts");
         //
         exec("eggs", `link ${NESTAPIKEY}`);
+
+        if (semver.lt(egg.parsed.version!, version)) {
+          egg.parsed.version = version;
+          const stringify = (egg.path.endsWith("json")
+            ? JSON.stringify
+            : egg.path.endsWith("toml")
+            ? TOML.stringify
+            : YAML.stringify);
+          Deno.writeTextFileSync(
+            egg.path,
+            Reflect.apply(
+              stringify,
+              undefined,
+              stringify === JSON.stringify
+                ? [egg.parsed, null, 2]
+                : [egg.parsed],
+            ),
+          );
+        }
         exec("eggs", "publish");
       } else {
         throw new TypeError(
@@ -186,10 +208,15 @@ async function bump(
   }
 }
 
-function find<T = JSONC.JSONValue>(
+interface FindResult<T = { [key: string]: JSONC.JSONValue }> {
+  source: string;
+  parsed: T | undefined;
+  path: string;
+}
+function find<T = { [key: string]: JSONC.JSONValue }>(
   glob: string | URL,
   options: Omit<ExpandGlobOptions, "includeDirs" | "caseInsensitive"> = {},
-): T | undefined {
+): FindResult<T> | undefined {
   glob = $.path.normalizeGlob(String(glob));
   const candidates = [
     ...$.fs.expandGlobSync(glob, {
@@ -201,43 +228,49 @@ function find<T = JSONC.JSONValue>(
   const feelingLucky = candidates.at(0);
 
   try {
-    const contents = Deno.readTextFileSync(String(feelingLucky?.path));
-    if (!contents) return undefined;
+    const source = Deno.readTextFileSync(String(feelingLucky?.path));
+    if (!source) return undefined;
     const ext = $.path.extname(feelingLucky?.path ?? "").replace(/^\./, "");
+
+    let parsed: T | undefined = undefined;
+    const path = feelingLucky?.path ?? "";
 
     switch (ext) {
       case ".json":
-        return JSONC.parse(contents, { allowTrailingComma: true }) as T ??
+        parsed = JSONC.parse(source, { allowTrailingComma: true }) as T ??
           undefined;
+        break;
       case ".yaml":/* fallthrough */
       case ".yml":
-        return YAML.parse(contents) as T ?? undefined;
+        parsed = YAML.parse(source) as T ?? undefined;
+        break;
       case ".toml":
-        return TOML.parse(contents) as T ?? undefined;
+        parsed = TOML.parse(source) as T ?? undefined;
+        break;
       default:
         return undefined;
     }
+
+    return { source, parsed, path };
   } catch (error) {
     if (!(error instanceof Deno.errors.NotFound)) throw error;
     return undefined;
   }
 }
 
-export { bump, exec, find };
-
 function exec<
   Env extends Record<string, string>,
   Cmd extends string[] = string[],
->(env: Env, ...cmd: Cmd): Promise<Uint8Array>;
+>(env: Env, ...cmd: Cmd): Promise<string>;
 
 function exec<
   Cmd extends string[] = string[],
->(...cmd: Cmd): Promise<Uint8Array>;
+>(...cmd: Cmd): Promise<string>;
 
 function exec(
   env: string | Record<string, string>,
   ...cmd: string[]
-): Promise<Uint8Array> {
+): Promise<string> {
   if (is.string(env)) {
     cmd.unshift(env);
     env = {} as Record<string, string>;
@@ -255,5 +288,7 @@ function exec(
     stderr: "null",
     stdin: "null",
     stdout: "piped",
-  }).output();
+  }).output().then((output) => new TextDecoder().decode(output));
 }
+
+export { bump, exec, find };
