@@ -203,4 +203,3 @@ export async function getEntity(ctx: any): Promise<any> {
     );
   }
 }
-

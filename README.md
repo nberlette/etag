@@ -125,9 +125,7 @@ This allows the issue to be connected to your Pull Request, creating a permanent
 record of your contribution to the project. It also makes it easier for
 maintainers to track project progression.
 
-Creating an issue also ensures you're given proper credit for fixing that bug. 😁
-
----
+## Creating an issue also ensures you're given proper credit for fixing the bug.
 
 > This section assumes you have [**the GitHub CLI**](https://cli.github.com).
 > You definitely _**should**_ have it.
