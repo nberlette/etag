@@ -1,0 +1,23 @@
+$schema: 'https://x.nest.land/eggs@0.3.10/src/schema.json'
+name: etag
+entry: ./mod.ts
+description: ETag encoding and decoding utility for Deno.
+homepage: 'https://github.com/deno911/etag'
+repository: 'https://github.com/deno911/etag'
+unstable: false
+unlisted: false
+version: 0.2.0
+releaseType: false
+files:
+  - './*.{json,jsonc,md,ts,d.ts}'
+  - './{egg.*,LICENSE,README.md}'
+ignore:
+  - ./test/**/*
+  - ./deno.lock
+  - './.{vscode,devcontainer,github,gitpod.yml}'
+  - ./version.ts
+checkFormat: deno fmt
+checkTests: deno test --unstable --no-check -A
+checkInstallation: true
+check: true
+checkAll: true
