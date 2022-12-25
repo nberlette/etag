@@ -13,7 +13,7 @@
  * ### Usage
  *
  * ```ts
- * import etag from "https://deno.land/x/etag@0.0.2/mod.ts";
+ * import etag from "https://deno.land/x/etag@0.1.1/mod.ts";
  *
  * etag(`<svg xmlns="http://www.w3.org/2000/svg"><!-- ... --></svg>`);
  *
@@ -37,7 +37,7 @@
  *
  * @author Nicholas Berlette <https://github.com/nberlette>
  * @module etag
- * @version 0.0.2
+ * @version 0.1.1
  * @license MIT
  */
 
@@ -79,7 +79,7 @@ export type { DecodedEntityTag, DecodedStatTag, ETagOptions, Options };
  * @param options either a boolean - a shorthand way to set `options.weak` - or an object of type `{ weak?: boolean; statTag?: boolean; }`
  * @example
  * ```ts
- * import * as etag from "https://deno.land/x/etag@0.0.2/mod.ts";
+ * import * as etag from "https://deno.land/x/etag@0.1.1/mod.ts";
  * import $ from "https://deno.land/x/dax/mod.ts";
  *
  * for await (const f of $.fs.expandGlob("./src/*.ts")) {
@@ -150,7 +150,7 @@ export function encode(entity: Entity, options: Options = {}): string {
  * ```ts
  * // continuing the example from etag.encode
  *
- * import * as etag from "https://deno.land/x/etag/mod.ts";
+ * import * as etag from "https://deno.land/x/etag@0.1.1/mod.ts";
  * import $ from "https://deno.land/x/dax/mod.ts";
  *
  * for await (const f of $.fs.expandGlob("./src/*.ts")) {
@@ -282,7 +282,7 @@ interface ETag extends Id<typeof etag> {
    * of shape `{ weak?: boolean; statTag?: boolean; }`
    * @example
    * ```ts
-   * import * as etag from "https://deno.land/x/etag@0.0.2/mod.ts";
+   * import * as etag from "https://deno.land/x/etag@0.1.1/mod.ts";
    * import $ from "https://deno.land/x/dax/mod.ts";
    *
    * for await (const f of $.fs.expandGlob("./src/*.ts")) {
@@ -307,7 +307,7 @@ const { assign, defineProperties: define } = Object;
  *
  * @example
  * ```ts
- * import etag from "https://deno.land/x/etag@0.0.2/mod.ts";
+ * import etag from "https://deno.land/x/etag@0.1.1/mod.ts";
  *
  * etag("hello deno911");
  * // 👆🏻 and 👇🏼 are identical

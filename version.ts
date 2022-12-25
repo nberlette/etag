@@ -5,7 +5,17 @@
 /// <reference lib="deno.window" />
 /// <reference lib="esnext" />
 
-import { $, assert, colors, is, JSONC, semver, TOML, YAML, type ExpandGlobOptions } from "./deps.ts";
+import {
+  $,
+  assert,
+  colors,
+  type ExpandGlobOptions,
+  is,
+  JSONC,
+  semver,
+  TOML,
+  YAML,
+} from "./deps.ts";
 
 const ansi = colors();
 const DEBUG = !["false", null, undefined].includes(Deno.env.get("DEBUG"));
@@ -16,20 +26,9 @@ export const MODULE = "etag";
 
 /** `prepublish` will be invoked before publish */
 export async function prepublish(version: string) {
-  const glob = $.fs.expandGlob.bind($);
-
-  for await (const file of glob("./*.{md,ts}")) {
-    try {
-      if (file.isFile) {
-        await bump(file.path, { version }).catch(console.error);
-      }
-    } catch (err) {
-      console.error(err);
-      if (preventPublishOnError) return false;
-    }
-  }
-
   try {
+    await bump("./*.{md,ts}", { version });
+
     // and link our nest api key from the environment
     const NESTAPIKEY = Deno.env.get("NESTAPIKEY");
     const egg = find<{
@@ -41,9 +40,12 @@ export async function prepublish(version: string) {
     if (egg?.parsed) {
       if (is.nonEmptyStringAndNotWhitespace(NESTAPIKEY)) {
         // ensure eggs is installed (implicit latest version)
-        exec(Deno.execPath(), "install -A https://deno.land/x/eggs/cli.ts");
+        await exec(
+          Deno.execPath(),
+          "install -A https://deno.land/x/eggs/cli.ts",
+        );
         //
-        exec("eggs", `link ${NESTAPIKEY}`);
+        await exec("eggs", `link ${NESTAPIKEY}`);
 
         if (semver.lt(egg.parsed.version!, version)) {
           egg.parsed.version = version;
@@ -63,7 +65,8 @@ export async function prepublish(version: string) {
             ),
           );
         }
-        exec("eggs", "publish");
+
+        await exec("eggs", "publish");
       } else {
         throw new TypeError(
           `Missing environment variable \`NESTAPIKEY\`, which is required to publish on ${
@@ -124,17 +127,17 @@ const defaultBumpContext: BumpContext = {
   },
 };
 async function bump(
-  path: string | URL,
+  pattern: string | URL,
   ctx?: Partial<BumpContext>,
 ): Promise<void>;
 async function bump(
-  path: string | URL,
-  version?: string,
+  pattern: string | URL,
+  version: string,
   ctx?: Partial<BumpContext>,
 ): Promise<void>;
 
 async function bump(
-  path: string | URL,
+  pattern: string | URL,
   version?: string | Partial<BumpContext>,
   ctx: Partial<BumpContext> = { ...defaultBumpContext },
 ): Promise<void> {
@@ -143,67 +146,72 @@ async function bump(
     ...(ctx || {}),
   } as BumpContext;
 
-  const _EXPORTED_VERSION_RE =
-    /^\s*(?<exported>export|)[ ]*(?<variable_type>const|let|var)[\t\s ]+(?<variable>\w+)[\s\t ]*=[\s\t ]*(?<quote>["'])(?<value>[^'"]+?)(?:['"][;]?)/m;
-
   const previous = ctx?.previous ?? VERSION ?? "0.0.0";
 
-  if (!is.nonEmptyStringAndNotWhitespace(version)) {
+  if (is.nullOrUndefined(version) || !is.string(version)) {
     version = semver.increment(previous, releaseType) ?? "";
 
     assert.nonEmptyStringAndNotWhitespace(version);
   }
 
-  path = String(path);
-  const filename = $.path.basename(path);
+  let path = String(pattern);
+  if ($.path.isGlob(path)) {
+    path = $.path.normalizeGlob(path);
+  }
 
-  try {
-    const PLACEHOLDER_RE = /[%#]\w+|[<]\w+?[>]/ig;
-    const PLACEHOLDERS = (
-      options?.placeholders === true
-        ? defaultBumpContext.options?.placeholders
-        : options?.placeholders === false
-        ? ""
-        : is.regExp(options?.placeholders)
-        ? options?.placeholders.source
-        : [options?.placeholders ?? ""].flat().flatMap((s) => s.split(/\b\|\b/))
-          .map((s) =>
-            s.replaceAll(PLACEHOLDER_RE, options?.placeholder ?? "VERSION")
-          ).join("|")
-    ) as string;
+  for (const file of $.fs.expandGlobSync(path)) {
+    if (file.isFile) {
+      try {
+        const PLACEHOLDER_RE = /[%#]\w+|[<]\w+?[>]/ig;
+        const PLACEHOLDERS = (
+          options?.placeholders === true
+            ? defaultBumpContext.options?.placeholders
+            : options?.placeholders === false
+            ? ""
+            : is.regExp(options?.placeholders)
+            ? options?.placeholders.source
+            : [options?.placeholders ?? ""].flat().flatMap((s) =>
+              s.split(/\b\|\b/)
+            )
+              .map((s) =>
+                s.replaceAll(PLACEHOLDER_RE, options?.placeholder ?? "VERSION")
+              ).join("|")
+        ) as string;
 
-    //
-    // normalize our delimiter
-    const DELIM = String(options?.delimiter);
-    const JSDOC = is.nonEmptyArray(options?.jsdoc) ? options?.jsdoc! : [];
-    const SPECIFIER_RE = new RegExp(
-      // lookbehind
-      `(?<=(?:^|${DELIM})(?:${MODULE}[@]${
-        options?.jsdoc && JSDOC.length
-          ? `|(?:^[\\t ]+\\* |\\s)${JSDOC.join("|")}`
-          : ""
-      }))` +
-        // placeholder tags, literal previous version, or any non-DELIM
-        `(${
-          PLACEHOLDERS ? PLACEHOLDERS + "|" : ""
-        }${VERSION}|(?!${DELIM}).+?)` +
-        // lookahead
-        `(?=$|${DELIM})`,
-      "mig",
-    );
-    let content = await Deno.readTextFile(path);
+        //
+        // normalize our delimiter
+        const DELIM = String(options?.delimiter);
+        const JSDOC = is.nonEmptyArray(options?.jsdoc) ? options?.jsdoc! : [];
+        const SPECIFIER_RE = new RegExp(
+          // lookbehind
+          `(?<=(?:^|${DELIM})(?:${MODULE}[@]${
+            options?.jsdoc && JSDOC.length
+              ? `|(?:^[\\t ]+\\* |\\s)${JSDOC.join("|")}`
+              : ""
+          }))` +
+            // placeholder tags, literal previous version, or any non-DELIM
+            `(${
+              PLACEHOLDERS ? PLACEHOLDERS + "|" : ""
+            }${VERSION}|(?!${DELIM}).+?)` +
+            // lookahead
+            `(?=$|${DELIM})`,
+          "mig",
+        );
+        let content = await Deno.readTextFile(file.path);
 
-    if (SPECIFIER_RE.test(content)) {
-      content = content.replaceAll(SPECIFIER_RE, version),
-        await Deno.writeTextFile(path, content).catch(console.error);
+        if (SPECIFIER_RE.test(content)) {
+          content = content.replaceAll(SPECIFIER_RE, version),
+            await Deno.writeTextFile(file.path, content).catch(console.error);
+        }
+      } catch (error) {
+        console.error(
+          ansi.bold.bgRed(" FAILED "),
+          `⚠︎ Unable to bump ${ansi.underline.red(file.name)}${
+            previous ? ` from ${ansi.underline(String(previous))}` : ""
+          } to ${ansi.bold(version)}!\n\n${error}`,
+        );
+      }
     }
-  } catch (error) {
-    console.error(
-      ansi.bold.bgRed(" FAILED "),
-      `⚠︎ Unable to bump ${ansi.underline.red(filename)}${
-        previous ? ` from ${ansi.underline(String(previous))}` : ""
-      } to ${ansi.bold(version)}!\n\n${error}`,
-    );
   }
 }
 
