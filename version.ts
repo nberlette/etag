@@ -21,7 +21,7 @@ const ansi = colors();
 const DEBUG = !["false", null, undefined].includes(Deno.env.get("DEBUG"));
 const preventPublishOnError = false;
 
-export const VERSION = "0.1.0";
+export const VERSION = "0.2.0";
 export const MODULE = "etag";
 
 /** `prepublish` will be invoked before publish */
