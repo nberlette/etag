@@ -6,7 +6,7 @@ homepage: "https://github.com/deno911/etag"
 repository: "https://github.com/deno911/etag"
 unstable: false
 unlisted: false
-version: 0.1.0
+version: 0.2.0
 releaseType: false
 files:
   - "./*.{json,jsonc,md,ts,d.ts}"
