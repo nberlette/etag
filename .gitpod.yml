@@ -1,11 +1,9 @@
 image: nberlette/gitpod-enhanced
 
 tasks:
-- init: |
-    export DENO_INSTALL_ROOT="$HOME/.deno/bin"
-    export DENO_DIR="$HOME/.deno/cache"
-    export PATH="$DENO_INSTALL_ROOT:$PATH"
-    curl -fsSL https://deno.land/install.sh | sh -
+  - init: |
+      export DENO_INSTALL="$HOME/.deno" PATH="$DENO_INSTALL/bin:$PATH"
+      curl -fsSL https://deno.land/install.sh | sh -
 
 vscode:
   extensions:
@@ -21,11 +19,7 @@ vscode:
 
 github:
   prebuilds:
-    master: true
     branches: true
-    pullRequests: true
     pullRequestsFromForks: true
-    addLabel: true
-    addCheck: true
-    addBadge: true
-
+    addLabel: "gitpod-ready"
+    addCheck: "prevent-merge-on-error"

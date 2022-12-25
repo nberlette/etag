@@ -23,24 +23,9 @@
   "[json][jsonc][markdown][yaml]": {
     "editor.formatOnType": true
   },
-  "workbench.colorCustomizations": {
-    "activityBar.activeBackground": "#056f8b",
-    "activityBar.background": "#056f8b",
-    "activityBar.foreground": "#e7e7e7",
-    "activityBar.inactiveForeground": "#e7e7e799",
-    "activityBarBadge.background": "#f965da",
-    "activityBarBadge.foreground": "#15202b",
-    "commandCenter.border": "#e7e7e799",
-    "sash.hoverBorder": "#056f8b",
-    "statusBar.background": "#03485a",
-    "statusBar.foreground": "#e7e7e7",
-    "statusBarItem.hoverBackground": "#056f8b",
-    "statusBarItem.remoteBackground": "#03485a",
-    "statusBarItem.remoteForeground": "#e7e7e7",
-    "titleBar.activeBackground": "#03485a",
-    "titleBar.activeForeground": "#e7e7e7",
-    "titleBar.inactiveBackground": "#03485a99",
-    "titleBar.inactiveForeground": "#e7e7e799"
-  },
-  "peacock.color": "#03485a"
+  "peacock.color": "#03485a",
+  "editor.formatOnSave": true,
+  "editor.formatOnSaveMode": "modificationsIfAvailable",
+  "editor.formatOnType": true,
+  "editor.defaultFormatter": "denoland.vscode-deno"
 }

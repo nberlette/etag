@@ -17,4 +17,5 @@ docs
 .backups
 .stashed
 .nodetag
-_util.ts
+deno.lock
+*.lock

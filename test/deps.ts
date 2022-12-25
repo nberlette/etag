@@ -1,6 +1,6 @@
 /// <reference no-default-lib="true" />
 /// <reference lib="deno.window" />
-/// <reference lib="esnext" />
+/// <reference lib="deno.ns" />
 
 /**
  * Extends the Deno runtime global scope with various testing tools.
@@ -26,4 +26,6 @@
  * ```
  * @module
  */
-import "https://deno.land/x/this@0.153.0/testing.ts";
+import "https://deno.land/x/this@0.160.1/testing.ts";
+// add chai support
+import "https://deno.land/x/this@0.160.1/testing/chai.ts";
